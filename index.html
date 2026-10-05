@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark" data-font="mono">
+<html lang="en" data-theme="pastel" data-font="modern">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -372,10 +372,11 @@ header::after{
     width: 100%;
     height: 100%;
     transition: transform .28s cubic-bezier(.4,0,.2,1);
+    will-change: transform;
   }
   .day-col {
-    width: 100%;
-    min-width: 100%;
+    width: 100vw;
+    min-width: 100vw;
     flex-shrink: 0;
     border-right: none;
     border-bottom: 1px solid var(--border);
@@ -750,8 +751,8 @@ var dragTaskId=null,dragDumpId=null; // separate drag trackers
 /* ── DISPLAY ── */
 function openDisplay(){document.getElementById('displayPanel').classList.add('open');document.getElementById('displayBackdrop').classList.add('open')}
 function closeDisplay(){document.getElementById('displayPanel').classList.remove('open');document.getElementById('displayBackdrop').classList.remove('open')}
-function setFont(f){document.documentElement.setAttribute('data-font',f);['mono','modern','hand'].forEach(function(k){document.getElementById('fc-'+k).classList.toggle('active',k===f)})}
-function setTheme(t){document.documentElement.setAttribute('data-theme',t);['dark','white','pastel','pinkbold'].forEach(function(k){document.getElementById('tc-'+k).classList.toggle('active',k===t)})}
+function setFont(f){document.documentElement.setAttribute('data-font',f);['mono','modern','hand'].forEach(function(k){document.getElementById('fc-'+k).classList.toggle('active',k===f)});try{localStorage.setItem('weekflow_font',f);}catch(e){}if(dbLoaded)saveToSupabase();}
+function setTheme(t){document.documentElement.setAttribute('data-theme',t);['dark','white','pastel','pinkbold'].forEach(function(k){document.getElementById('tc-'+k).classList.toggle('active',k===t)});try{localStorage.setItem('weekflow_theme',t);}catch(e){}if(dbLoaded)saveToSupabase();}
 
 /* ── UTILS ── */
 function getTag(id){return state.tags.find(function(t){return t.id===id;})||{id:id,label:id,color:'#888'}}
@@ -1010,7 +1011,16 @@ document.addEventListener('keydown',function(e){
    Saves entire state as one JSON
    blob to weekflow_state table.
 ══════════════════════════════ */
-var SUPA_URL='https://ulbfsdbvrhrwqkztrkal.supabase.co';
+/* apply theme+font instantly before Supabase loads to avoid flash */
+(function(){
+  try{
+    var t=localStorage.getItem('weekflow_theme');
+    var f=localStorage.getItem('weekflow_font');
+    if(t) document.documentElement.setAttribute('data-theme',t);
+    if(f) document.documentElement.setAttribute('data-font',f);
+  }catch(e){}
+})();
+'https://ulbfsdbvrhrwqkztrkal.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVsYmZzZGJ2cmhyd3FrenRya2FsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5NTAxNjgsImV4cCI6MjA4ODUyNjE2OH0.X1Kqp81DfJEK3AQhzG2QzA6AcCZ0mT-_MbAA6oAfRrY';
 var saveTimer=null;
 var dbLoaded=false;
@@ -1033,7 +1043,9 @@ function saveToSupabase(){
       dump:state.dump,
       tags:state.tags,
       taskId:state.taskId,
-      dumpId:state.dumpId
+      dumpId:state.dumpId,
+      theme:document.documentElement.getAttribute('data-theme')||'dark',
+      font:document.documentElement.getAttribute('data-font')||'mono'
     };
     // also save to localStorage as fallback
     try{localStorage.setItem('weekflow_state',JSON.stringify(payload));}catch(e){}
@@ -1077,6 +1089,8 @@ function loadFromSupabase(){
       state.tags=data.tags||state.tags;
       state.taskId=data.taskId||state.taskId;
       state.dumpId=data.dumpId||state.dumpId;
+      if(data.theme){document.documentElement.setAttribute('data-theme',data.theme);try{localStorage.setItem('weekflow_theme',data.theme);}catch(e){}}
+      if(data.font){document.documentElement.setAttribute('data-font',data.font);try{localStorage.setItem('weekflow_font',data.font);}catch(e){}}
       dbLoaded=true;
       showSyncStatus('✓ loaded','#5ecf8a');
     } else {
@@ -1182,7 +1196,7 @@ function mobileGoDay(di){
   mobileActiveDay=di;
   renderMobileDayStrip();
   var row=document.querySelector('.days-row');
-  if(row) row.style.transform='translateX(-'+(di*100)+'%)';
+  if(row) row.style.transform='translateX(-'+(di*100)+'vw)';
 }
 
 function renderMobileDayStrip(){
@@ -1257,7 +1271,7 @@ render=function(){
   if(isMobile()){
     renderMobileDayStrip();
     var row=document.querySelector('.days-row');
-    if(row) row.style.transform='translateX(-'+(mobileActiveDay*100)+'%)';
+    if(row) row.style.transform='translateX(-'+(mobileActiveDay*100)+'vw)';
     updateDumpBadge();
     if(document.getElementById('mobileDumpSheet').classList.contains('open')) renderMobileDump();
   }
